@@ -42,7 +42,10 @@ class ConnectionPool:
         return next(filtered)
 
     def add_to_pool(self, transport):
+        now = datetime.datetime.now()
+        answer = f'[{now}] START'
         self.__pool.append(ConnectionItem(transport=transport, last_activity=datetime.datetime.now()))
+        transport.write(f'{answer}\n'.encode())
 
     def remove_item(self, transport):
         item = self._find_element(transport)
@@ -83,9 +86,9 @@ async def send_data_to_clients():
 async def send_warning():
     while True:
         now = datetime.datetime.now()
-        warning = 'You are inactive too long'
+        warning = f'[{now}] You are inactive too long'
         for item in CONNECTION_POOL.get_pool():
-            if (now - item.last_activity).seconds >= 5 and not item.is_warning_send:
+            if (now - item.last_activity).seconds >= 5 * 60 and not item.is_warning_send:
                 item.transport.write(f'{warning}\n'.encode())
                 item.is_warning_send = True
         await asyncio.sleep(0.1)
@@ -94,9 +97,9 @@ async def send_warning():
 async def kick_from_server():
     while True:
         now = datetime.datetime.now()
-        warning = 'KILL'
+        warning = f'[{now}] KILL'
         for item in CONNECTION_POOL.get_pool():
-            if (now - item.last_activity).seconds >= 10:
+            if (now - item.last_activity).seconds >= 10 * 60:
                 item.transport.write(f'{warning}\n'.encode())
                 item.transport.close()
         await asyncio.sleep(0.1)
@@ -104,7 +107,7 @@ async def kick_from_server():
 
 loop = asyncio.get_event_loop()
 coro = loop.create_server(EchoServerClientProtocol, HOST, PORT)
-loop.create_task(send_data_to_clients())
+# loop.create_task(send_data_to_clients())
 loop.create_task(send_warning())
 loop.create_task(kick_from_server())
 
